@@ -25,11 +25,27 @@ const HeroSection = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button variant="hero" size="lg" className="group">
+              <Button 
+                variant="hero" 
+                size="lg" 
+                className="group"
+                onClick={() => {
+                  const assessmentElement = document.getElementById('skills-assessment');
+                  assessmentElement?.scrollIntoView({ behavior: 'smooth' });
+                }}
+              >
                 Start Your Assessment
                 <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
-              <Button variant="outline" size="lg" className="bg-white/10 border-white/20 text-primary-foreground hover:bg-white/20">
+              <Button 
+                variant="outline" 
+                size="lg" 
+                className="bg-white/10 border-white/20 text-primary-foreground hover:bg-white/20"
+                onClick={() => {
+                  const careersElement = document.getElementById('career-recommendations');
+                  careersElement?.scrollIntoView({ behavior: 'smooth' });
+                }}
+              >
                 Explore Careers
               </Button>
             </div>

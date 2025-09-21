@@ -4,6 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Circle, Brain, Code, Users, Palette, Calculator, Globe } from "lucide-react";
+import { useAssessment } from "@/contexts/AssessmentContext";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Skill {
   id: string;
@@ -33,25 +35,19 @@ const skillCategories = [
 ];
 
 const SkillsAssessment = () => {
-  const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set());
-  const [currentStep, setCurrentStep] = useState(0);
+  const { selectedSkills, currentStep, toggleSkill, setCurrentStep, completeAssessment } = useAssessment();
+  const { toast } = useToast();
   
   const totalSkills = skillCategories.reduce((acc, cat) => acc + cat.skills.length, 0);
   const progress = (selectedSkills.size / totalSkills) * 100;
 
-  const toggleSkill = (skillId: string) => {
-    const newSelected = new Set(selectedSkills);
-    if (newSelected.has(skillId)) {
-      newSelected.delete(skillId);
-    } else {
-      newSelected.add(skillId);
-    }
-    setSelectedSkills(newSelected);
-  };
-
   const handleNext = () => {
     if (currentStep < skillCategories.length - 1) {
       setCurrentStep(currentStep + 1);
+      toast({
+        title: "Progress Saved",
+        description: `Moving to ${skillCategories[currentStep + 1].name}`,
+      });
     }
   };
 
@@ -61,10 +57,33 @@ const SkillsAssessment = () => {
     }
   };
 
+  const handleCompleteAssessment = () => {
+    if (selectedSkills.size === 0) {
+      toast({
+        title: "No Skills Selected",
+        description: "Please select at least one skill before proceeding.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    completeAssessment();
+    toast({
+      title: "Assessment Complete!",
+      description: "Generating your personalized career recommendations...",
+    });
+    
+    // Scroll to career recommendations
+    setTimeout(() => {
+      const careersElement = document.getElementById('career-recommendations');
+      careersElement?.scrollIntoView({ behavior: 'smooth' });
+    }, 1000);
+  };
+
   const currentCategory = skillCategories[currentStep];
 
   return (
-    <div className="py-20 bg-skill-gradient">
+    <div id="skills-assessment" className="py-20 bg-skill-gradient">
       <div className="container mx-auto px-6">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
@@ -184,7 +203,7 @@ const SkillsAssessment = () => {
                     Next Category
                   </Button>
                 ) : (
-                  <Button variant="hero">
+                  <Button variant="hero" onClick={handleCompleteAssessment}>
                     Generate Career Recommendations
                   </Button>
                 )}

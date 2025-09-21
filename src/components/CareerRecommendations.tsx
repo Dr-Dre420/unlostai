@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
   Brain, 
   Code, 
@@ -12,8 +13,13 @@ import {
   ArrowUpRight,
   MapPin,
   IndianRupee,
-  Clock
+  Clock,
+  BookOpen,
+  Heart
 } from "lucide-react";
+import { useAssessment } from "@/contexts/AssessmentContext";
+import { useToast } from "@/components/ui/use-toast";
+import { useState } from "react";
 
 interface CareerPath {
   id: string;
@@ -85,8 +91,82 @@ const careerPaths: CareerPath[] = [
 ];
 
 const CareerRecommendations = () => {
+  const { selectedSkills, assessmentComplete } = useAssessment();
+  const { toast } = useToast();
+  const [savedCareers, setSavedCareers] = useState<Set<string>>(new Set());
+
+  // Calculate match percentages based on selected skills
+  const calculateMatch = (careerSkills: string[]) => {
+    if (selectedSkills.size === 0) return 70; // Default for demo
+    
+    const skillsArray = Array.from(selectedSkills);
+    const matchingSkills = careerSkills.filter(skill => 
+      skillsArray.some(selectedSkill => 
+        selectedSkill.toLowerCase().includes(skill.toLowerCase()) ||
+        skill.toLowerCase().includes(selectedSkill.toLowerCase())
+      )
+    );
+    
+    const baseMatch = Math.min(95, 60 + (matchingSkills.length / careerSkills.length) * 35);
+    return Math.round(baseMatch);
+  };
+
+  const handleSaveCareer = (careerId: string, careerTitle: string) => {
+    const newSaved = new Set(savedCareers);
+    if (newSaved.has(careerId)) {
+      newSaved.delete(careerId);
+      toast({
+        title: "Career Removed",
+        description: `${careerTitle} removed from saved careers`,
+      });
+    } else {
+      newSaved.add(careerId);
+      toast({
+        title: "Career Saved!",
+        description: `${careerTitle} added to your saved careers`,
+      });
+    }
+    setSavedCareers(newSaved);
+  };
+
+  // Update career paths with calculated matches
+  const updatedCareerPaths = careerPaths.map(career => ({
+    ...career,
+    match: calculateMatch(career.requiredSkills)
+  })).sort((a, b) => b.match - a.match);
+
+  if (!assessmentComplete && selectedSkills.size === 0) {
+    return (
+      <div id="career-recommendations" className="py-20 bg-career-gradient">
+        <div className="container mx-auto px-6">
+          <div className="max-w-4xl mx-auto text-center">
+            <Card className="shadow-medium">
+              <CardContent className="py-12">
+                <Brain className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-2xl font-bold mb-4">Complete Your Skills Assessment</h3>
+                <p className="text-muted-foreground mb-6">
+                  Take our personalized skills assessment to get AI-powered career recommendations 
+                  tailored specifically for you.
+                </p>
+                <Button 
+                  variant="hero" 
+                  onClick={() => {
+                    const assessmentElement = document.getElementById('skills-assessment');
+                    assessmentElement?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                >
+                  Start Assessment
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="py-20 bg-career-gradient">
+    <div id="career-recommendations" className="py-20 bg-career-gradient">
       <div className="container mx-auto px-6">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
@@ -99,7 +179,7 @@ const CareerRecommendations = () => {
 
           {/* Career Cards Grid */}
           <div className="grid lg:grid-cols-2 gap-6 animate-fade-in">
-            {careerPaths.map((career, index) => (
+            {updatedCareerPaths.map((career, index) => (
               <Card 
                 key={career.id} 
                 className="shadow-medium hover:shadow-strong transition-all duration-300 hover:-translate-y-1"
@@ -205,12 +285,63 @@ const CareerRecommendations = () => {
 
                   {/* Action Buttons */}
                   <div className="flex gap-3 pt-4 border-t">
-                    <Button variant="default" className="flex-1">
-                      View Learning Path
-                      <ArrowUpRight className="h-4 w-4 ml-1" />
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      Save
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="default" className="flex-1">
+                          <BookOpen className="h-4 w-4 mr-2" />
+                          View Learning Path
+                          <ArrowUpRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                          <DialogTitle className="flex items-center gap-2">
+                            {career.icon}
+                            {career.title} Learning Path
+                          </DialogTitle>
+                          <DialogDescription>
+                            Structured roadmap to become a successful {career.title.toLowerCase()}
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div className="grid gap-4">
+                            <div className="p-4 border rounded-lg">
+                              <h4 className="font-semibold mb-2">Phase 1: Foundation (Months 1-3)</h4>
+                              <ul className="space-y-1 text-sm text-muted-foreground">
+                                {career.requiredSkills.slice(0, 2).map(skill => (
+                                  <li key={skill}>• Master {skill} fundamentals</li>
+                                ))}
+                                <li>• Complete 2-3 practical projects</li>
+                              </ul>
+                            </div>
+                            <div className="p-4 border rounded-lg">
+                              <h4 className="font-semibold mb-2">Phase 2: Specialization (Months 4-8)</h4>
+                              <ul className="space-y-1 text-sm text-muted-foreground">
+                                {career.requiredSkills.slice(2).map(skill => (
+                                  <li key={skill}>• Advanced {skill} techniques</li>
+                                ))}
+                                <li>• Build portfolio projects</li>
+                                <li>• Contribute to open source</li>
+                              </ul>
+                            </div>
+                            <div className="p-4 border rounded-lg">
+                              <h4 className="font-semibold mb-2">Phase 3: Job Preparation (Months 9-12)</h4>
+                              <ul className="space-y-1 text-sm text-muted-foreground">
+                                <li>• Interview preparation</li>
+                                <li>• Network with professionals</li>
+                                <li>• Apply for internships/jobs</li>
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                    <Button 
+                      variant={savedCareers.has(career.id) ? "default" : "outline"} 
+                      size="sm"
+                      onClick={() => handleSaveCareer(career.id, career.title)}
+                    >
+                      <Heart className={`h-4 w-4 ${savedCareers.has(career.id) ? 'fill-current' : ''}`} />
                     </Button>
                   </div>
                 </CardContent>
@@ -228,10 +359,28 @@ const CareerRecommendations = () => {
                   tailored to your career goals.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Button variant="hero" size="lg">
+                  <Button 
+                    variant="hero" 
+                    size="lg"
+                    onClick={() => {
+                      toast({
+                        title: "Feature Coming Soon!",
+                        description: "Personalized learning plans will be available soon.",
+                      });
+                    }}
+                  >
                     Create Learning Plan
                   </Button>
-                  <Button variant="outline" size="lg">
+                  <Button 
+                    variant="outline" 
+                    size="lg"
+                    onClick={() => {
+                      toast({
+                        title: "Feature Coming Soon!",
+                        description: "Mentor connections will be available soon.",
+                      });
+                    }}
+                  >
                     Connect with Mentors
                   </Button>
                 </div>
